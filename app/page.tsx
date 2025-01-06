@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Sidebar from "./menu";
 
 export default function Home() {

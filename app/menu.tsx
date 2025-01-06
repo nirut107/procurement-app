@@ -1,10 +1,8 @@
 'use client'
 import React, { useState } from 'react';
 import {
-  AppstoreOutlined,
   ContainerOutlined,
   DesktopOutlined,
-  MailOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PieChartOutlined,

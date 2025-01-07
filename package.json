@@ -9,13 +9,20 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.7.4",
+    "@prisma/client": "^6.1.0",
     "antd": "^5.23.0",
+    "bcrypt": "^5.1.1",
+    "firebase": "^11.1.0",
     "next": "15.1.3",
+    "next-auth": "^4.24.11",
+    "prima": "^0.0.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/bcrypt": "^5.0.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

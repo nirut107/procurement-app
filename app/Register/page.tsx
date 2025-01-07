@@ -6,8 +6,9 @@ import { signIn } from "next-auth/react";
 import Password from "antd/es/input/Password";
 import { Spin } from "antd";
 
-export default function Home() {
+export default function Order() {
   const [input, setInput] = useState({
+	name: "",
     email: "",
     password: "",
   });
@@ -21,6 +22,20 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     try {
+		const response = await fetch('/api/auth/signup', {
+			method: 'POST',
+			headers: {
+			  'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				name: input.name,
+				email: input.email,
+        		password: input.password
+			}),
+		  });
+      if (!response.ok) {
+        throw  new Error('error')
+      }
       const result = await signIn("credentials", {
         redirect: false,
         email: input.email,
@@ -37,9 +52,6 @@ export default function Home() {
       setLoading(false);
     }
   };
-  const regis = () => {
-    router.push("/Register");
-  };
 
   return loading ? (
     <div className="flex w-screen h-screen justify-center items-center text-black">
@@ -49,9 +61,16 @@ export default function Home() {
       </div>
     </div>
   ) : (
-    <div>
-      <div className="w-full h-svh flex justify-center items-center flex-col  gap-2">
-        <label>username</label>
+    <>
+      <div className="w-full h-svh flex justify-center items-center flex-col ">
+        <label>Username</label>
+        <Input
+          className="w-[250px]"
+          name="name"
+          value={input.name}
+          onChange={handleOnChange}
+        />
+		<label>Email</label>
         <Input
           className="w-[250px]"
           name="email"
@@ -65,15 +84,15 @@ export default function Home() {
           value={input.password}
           onChange={handleOnChange}
         />
-        <Button className="mt-5 mb-10"
+        <Button
           onClick={(e) => {
             onSubmit(e);
           }}
         >
-          login
+          Register
         </Button>
-        <Button className=" flex justify-start " onClick={regis}>Register</Button>
       </div>
-    </div>
+    </>
   );
 }
+

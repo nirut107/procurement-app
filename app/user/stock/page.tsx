@@ -1,7 +1,10 @@
+"use client";
+import UploadStock from "./uploadStock";
+
 export default function Stock() {
-	return (
-	  <>
-		  <div className="flex flex-grow">stock</div>
-	  </>
-	);
-  }
+  return (
+    <div className=" bg-white">
+      <UploadStock />
+    </div>
+  );
+}

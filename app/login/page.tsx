@@ -1,78 +1,82 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { Button, Input } from "antd";
-import { useState } from "react";
+import { Button, Input, Form, Spin } from "antd";
 import { signIn } from "next-auth/react";
-import Password from "antd/es/input/Password";
-import { Spin } from "antd";
+import { useState } from "react";
 
 export default function Home() {
-  const [input, setInput] = useState({
-    email: "",
-    password: "",
-  });
   const router = useRouter();
+  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
-  const handleOnChange = (e) => {
-    setInput({ ...input, [e.target.name]: e.target.value });
-  };
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
     try {
       const result = await signIn("credentials", {
         redirect: false,
-        email: input.email,
-        password: input.password,
+        email: values.username,
+        password: values.password,
       });
+
       if (result?.error) {
-        console.error(result.error);
-        return false;
+        throw new Error(result.error);
       }
+
       router.push("/user/order");
     } catch (error) {
-      console.log(error);
-    } finally {
       setLoading(false);
+      console.error(error);
     }
   };
+
   const regis = () => {
     router.push("/Register");
   };
 
   return loading ? (
-    <div className="flex w-screen h-screen justify-center items-center text-black">
+    <div
+      className="flex w-screen h-screen justify-center items-center text-black "
+    >
       <div className="flex flex-col justify-center items-center gap-8">
         <Spin size="large" spinning={loading} />
-        <p className=" text-2xl text-blue-600">Loading.........</p>
+        <p className="text-2xl text-blue-600">Loading.........</p>
       </div>
     </div>
   ) : (
-    <div>
-      <div className="w-full h-svh flex justify-center items-center flex-col  gap-2">
-        <label>username</label>
-        <Input
-          className="w-[250px]"
-          name="email"
-          value={input.email}
-          onChange={handleOnChange}
-        />
-        <label>password</label>
-        <Password
-          className="w-[250px]"
-          name="password"
-          value={input.password}
-          onChange={handleOnChange}
-        />
-        <Button className="mt-5 mb-10"
-          onClick={(e) => {
-            onSubmit(e);
-          }}
-        >
-          login
+    <div
+      className=" w-full h-screen flex justify-center items-center bg-glasses bg-no-repeat bg-cover "
+    >
+      <div className="bg-gradient-to-r from-white to-gray-100  p-10 rounded-lg shadow-md w-[350px]">
+        <h2 className="text-center text-2xl font-bold mb-6 text-gray-400">Login</h2>
+
+        <Form form={form} onFinish={onFinish} className="flex flex-col gap-4">
+          <Form.Item
+            name="username"
+            rules={[{ required: true, message: "Please input your username!" }]}
+          >
+            <Input className="w-full" placeholder="Username" />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            rules={[{ required: true, message: "Please input your password!" }]}
+          >
+            <Input.Password className="w-full" placeholder="Password" />
+          </Form.Item>
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="mt-6 w-full"
+            loading={loading}
+          >
+            Login
+          </Button>
+        </Form>
+
+        <Button type="link" onClick={regis} className="mt-4 text-center w-full">
+          Don't have an account? Register
         </Button>
-        <Button className=" flex justify-start " onClick={regis}>Register</Button>
       </div>
     </div>
   );

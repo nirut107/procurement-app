@@ -17,4 +17,40 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+model Order {
+  id           Int      @id @default(autoincrement())
+  customerId   String
+  customerName String
+  orders       Json     // Store order items as JSON
+  remark       String?  // Optional
+  createdAt    DateTime @default(now())
+  status		String @default("IN PROGRESS")
+  total      Float @default(0)
+  number		Int @default(0)
+}
+
+model Stocks {
+  id              Int     @id @default(autoincrement())
+  version         String
+  brand           String
+  category        String
+  productcode     String @unique
+  opccode         String
+  model           String
+  color           String
+  colorname       String
+  searchstring    String
+  price   			Float
+  stockoh         Int
+  stockchina      Int
+}
+
+model customer {
+	id              Int     @id @default(autoincrement())
+	customerCode	String	@unique
+	customerName	String
+	saleCode		String
+	email			String
+	province		String
+}
 

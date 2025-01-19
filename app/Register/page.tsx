@@ -1,14 +1,13 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { Button, Input } from "antd";
+import { Button, Input, Form, Spin } from "antd";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import Password from "antd/es/input/Password";
-import { Spin } from "antd";
 
 export default function Order() {
   const [input, setInput] = useState({
-	name: "",
+    name: "",
     email: "",
     password: "",
   });
@@ -18,23 +17,24 @@ export default function Order() {
   const handleOnChange = (e) => {
     setInput({ ...input, [e.target.name]: e.target.value });
   };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-		const response = await fetch('/api/auth/signup', {
-			method: 'POST',
-			headers: {
-			  'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				name: input.name,
-				email: input.email,
-        		password: input.password
-			}),
-		  });
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: input.name,
+          email: input.email,
+          password: input.password,
+        }),
+      });
       if (!response.ok) {
-        throw  new Error('error')
+        throw new Error("error");
       }
       const result = await signIn("credentials", {
         redirect: false,
@@ -57,42 +57,58 @@ export default function Order() {
     <div className="flex w-screen h-screen justify-center items-center text-black">
       <div className="flex flex-col justify-center items-center gap-8">
         <Spin size="large" spinning={loading} />
-        <p className=" text-2xl text-blue-600">Loading.........</p>
+        <p className="text-2xl text-blue-600">Loading.........</p>
       </div>
     </div>
   ) : (
-    <>
-      <div className="w-full h-svh flex justify-center items-center flex-col ">
-        <label>Username</label>
-        <Input
-          className="w-[250px]"
-          name="name"
-          value={input.name}
-          onChange={handleOnChange}
-        />
-		<label>Email</label>
-        <Input
-          className="w-[250px]"
-          name="email"
-          value={input.email}
-          onChange={handleOnChange}
-        />
-        <label>password</label>
-        <Password
-          className="w-[250px]"
-          name="password"
-          value={input.password}
-          onChange={handleOnChange}
-        />
-        <Button
-          onClick={(e) => {
-            onSubmit(e);
-          }}
-        >
+    <div className="w-full h-screen flex justify-center items-center bg-register bg-no-repeat bg-cover">
+      <div className="bg-white p-10 rounded-lg shadow-md w-[350px]">
+        <h2 className="text-center text-2xl font-bold mb-6 text-gray-400">
           Register
-        </Button>
+        </h2>
+
+        <Form onSubmitCapture={onSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-sm font-semibold">Email</label>
+            <Input
+              className="w-full"
+              name="email"
+              value={input.email}
+              onChange={handleOnChange}
+              placeholder="Enter your email"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold">Username</label>
+            <Input
+              className="w-full"
+              name="name"
+              value={input.name}
+              onChange={handleOnChange}
+              placeholder="Enter your username"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold">Password</label>
+            <Password
+              className="w-full"
+              name="password"
+              value={input.password}
+              onChange={handleOnChange}
+              placeholder="Enter your password"
+            />
+          </div>
+
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="mt-6 w-full"
+            loading={loading}
+          >
+            Register
+          </Button>
+        </Form>
       </div>
-    </>
+    </div>
   );
 }
-

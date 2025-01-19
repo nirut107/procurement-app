@@ -1,11 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
-import { create } from "domain";
 
 const prisma = new PrismaClient();
 
-export async function POST(req: Request, res: Response) {
+export async function POST(req: Request) {
   try {
     const { name, email, password } = await req.json();
     if (!password || !email) {
@@ -24,7 +23,7 @@ export async function POST(req: Request, res: Response) {
     });
     return Response.json(newUser);
   } catch (error) {
-    console.log(error);
+    // console.log(error);
     return NextResponse.rewrite(new URL('/user', req.url));
   }
 }

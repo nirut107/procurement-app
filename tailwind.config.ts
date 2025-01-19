@@ -12,6 +12,11 @@ export default {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+	  backgroundImage: {
+		'glasses': "url('/glasses.jpg')",
+		'register': "url('/register.jpg')",
+		'galaxy':"url('/galaxy.jpg')",
+      }
     },
   },
   plugins: [],

@@ -8,7 +8,7 @@ import { Spin } from "antd";
 
 export default function Order() {
   const [input, setInput] = useState({
-	name: "",
+    name: "",
     email: "",
     password: "",
   });
@@ -22,19 +22,19 @@ export default function Order() {
     e.preventDefault();
     setLoading(true);
     try {
-		const response = await fetch('/api/auth/signup', {
-			method: 'POST',
-			headers: {
-			  'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				name: input.name,
-				email: input.email,
-        		password: input.password
-			}),
-		  });
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: input.name,
+          email: input.email,
+          password: input.password,
+        }),
+      });
       if (!response.ok) {
-        throw  new Error('error')
+        throw new Error("error");
       }
       const result = await signIn("credentials", {
         redirect: false,
@@ -70,7 +70,7 @@ export default function Order() {
           value={input.name}
           onChange={handleOnChange}
         />
-		<label>Email</label>
+        <label>Email</label>
         <Input
           className="w-[250px]"
           name="email"
@@ -95,4 +95,3 @@ export default function Order() {
     </>
   );
 }
-

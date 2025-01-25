@@ -1,5 +1,8 @@
+"use client";
 import React, { useState, useEffect } from "react";
-import { PlusOutlined } from "@ant-design/icons";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
 import { useCounterStore } from "@/app/providers/app-store-provider";
 import {
   Button,
@@ -10,8 +13,8 @@ import {
   Row,
   Space,
   AutoComplete,
+  message,
 } from "antd";
-import { combine } from "zustand/middleware";
 
 interface OrderItem {
   itemId: string;
@@ -22,6 +25,16 @@ interface OrderItem {
   number: number;
 }
 
+interface Item {
+  searchstring: string;
+  price: number;
+  version: string;
+}
+
+interface Customer {
+  customerCode: String;
+  customerName: String;
+}
 interface FormValues {
   customerId: string;
   customerName: string;
@@ -31,6 +44,8 @@ interface FormValues {
 }
 
 function AddOrder() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [customerId, setCustomerId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [orders, setOrders] = useState<OrderItem[]>([]);
@@ -40,6 +55,8 @@ function AddOrder() {
   const { item, createStock } = useCounterStore((state) => state);
   const { openOrder, setOpenOrder } = useCounterStore((state) => state);
   const { editOrder, createEditOrder } = useCounterStore((state) => state);
+  const [forms] = Form.useForm();
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     const fetchCustomerData = () => {
@@ -56,40 +73,57 @@ function AddOrder() {
         .then((stockDB) => createStock(stockDB))
         .catch((error) => console.error("Failed to fetch stock data", error));
     };
-    const newTotal = orders.reduce(
-      (sum, order) => sum + (order.amount || 0),
-      0
-    );
-    const newNumber = orders.reduce(
-      (sum, order) => sum + (order.piece || 0),
-      0
-    );
-    setTotal(newTotal);
-    setNumber(newNumber);
-    if (editOrder.edit) {
-      setTotal(editOrder.total);
-      setCustomerId(editOrder.customerId);
-      setCustomerName(editOrder.customerName);
-      setOrders(editOrder.orders);
-      setNumber(editOrder.number || 0);
-      const setEditFalse = { ...editOrder, edit: false };
-      createEditOrder(setEditFalse);
-      forms.setFieldsValue({
-        customerId: editOrder.customerId + " - " + editOrder.customerName,
-        orders: editOrder.orders,
-        remark: editOrder.remark,
-      });
-    }
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else {
+      console.log("sesstion", session);
+      const newTotal = orders.reduce(
+        (sum, order) => sum + (order.amount || 0),
+        0
+      );
+      const newNumber = orders.reduce(
+        (sum, order) => sum + (order.piece || 0),
+        0
+      );
 
-    if (!customer) {
-      fetchCustomerData();
+      setTotal(newTotal);
+      setNumber(newNumber);
+      if (editOrder && editOrder.edit) {
+        setTotal(editOrder.total);
+        setCustomerId(editOrder.customerId);
+        setCustomerName(editOrder.customerName);
+        setOrders(editOrder.orders);
+        setNumber(editOrder.number || 0);
+        const setEditFalse = { ...editOrder, edit: false };
+        createEditOrder(setEditFalse);
+        forms.setFieldsValue({
+          customerId: editOrder.customerId + " - " + editOrder.customerName,
+          orders: editOrder.orders,
+          remark: editOrder.remark,
+        });
+      }
+      if (customer.length == 0) {
+        fetchCustomerData();
+      }
+      if (item.length == 0) {
+        fetchStockData();
+      }
     }
-    if (!item) {
-      fetchStockData();
-    }
-  }, [customer, item, customerId, customerName, orders, editOrder]);
+  }, [
+    customer,
+    item,
+    customerId,
+    customerName,
+    orders,
+    editOrder,
+    createCustomer,
+    createEditOrder,
+    createStock,
+    forms,
+    status,
+    router,
+  ]);
 
-  const [forms] = Form.useForm();
   const showDrawer = () => {
     const editorder = {
       key: "",
@@ -101,11 +135,12 @@ function AddOrder() {
       number: 0,
       remark: "",
     };
+    createEditOrder(editOrder);
     forms.setFieldsValue({
-      customerId: editOrder.customerId,
-      customerName: editOrder.customerName,
-      orders: editOrder.orders,
-      remark: editOrder.remark,
+      customerId: "",
+      customerName: "",
+      orders: [],
+      remark: "",
     });
     createEditOrder(editorder);
     setOpenOrder(true);
@@ -162,7 +197,7 @@ function AddOrder() {
           ? (updatedOrders[index].price || 0) *
             (updatedOrders[index].piece || 0)
           : field == "piece"
-          ? (updatedOrders[index].price || 0) * value
+          ? (updatedOrders[index].price || 0) * (value as number)
           : updatedOrders[index].amount,
     };
     forms.setFieldsValue({
@@ -211,9 +246,15 @@ function AddOrder() {
 
   //   ---------------------- add order in DB -------------------------
   const { order, createOrder } = useCounterStore((state) => state);
+  const key = "updatable";
   const onFinish = async (values: FormValues) => {
-    if (editOrder.id) {
+    if (editOrder && editOrder.id) {
       try {
+        messageApi.open({
+          key,
+          type: "loading",
+          content: "Saving",
+        });
         const response = await fetch(`/api/addorder/${editOrder.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -230,6 +271,12 @@ function AddOrder() {
         if (response.ok) {
           forms.resetFields();
           clearData();
+          messageApi.open({
+            key,
+            type: "success",
+            content: "Success",
+            duration: 2,
+          });
           setOpenOrder(false);
         } else {
           throw new Error("Failed to submit order");
@@ -239,6 +286,11 @@ function AddOrder() {
       }
     } else {
       try {
+        messageApi.open({
+          key,
+          type: "loading",
+          content: "Saving",
+        });
         const response = await fetch("/api/addorder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -261,6 +313,7 @@ function AddOrder() {
             customerName: customerName,
             orders: values.orders,
             remark: values.remark,
+            createdAt: responseData.createdAt,
             total: total,
             number: number,
             id: responseData.id,
@@ -271,6 +324,12 @@ function AddOrder() {
           createOrder(newOrder);
           forms.resetFields();
           clearData();
+          messageApi.open({
+            key,
+            type: "success",
+            content: "Success",
+            duration: 2,
+          });
           setOpenOrder(false);
         } else {
           throw new Error("Failed to submit order");
@@ -309,12 +368,13 @@ function AddOrder() {
   };
   return (
     <>
+      {contextHolder}
       <Button type="primary" onClick={showDrawer} icon={<PlusOutlined />}>
         AddOrder
       </Button>
       <Drawer
         title="AddOrder"
-        width={720}
+        width={"100%"}
         onClose={onClose}
         open={openOrder}
         styles={{
@@ -344,7 +404,7 @@ function AddOrder() {
           onFinish={onFinish}
         >
           <Row gutter={16}>
-            <Col span={12}>
+            <Col span={16}>
               <Form.Item
                 name="customerId"
                 label="custumer ID"
@@ -361,27 +421,20 @@ function AddOrder() {
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={16} className=" pb-2">
-            <Col span={8}>
-              <strong>Item ID</strong>
-            </Col>
-            <Col span={4}>
-              <strong>Price</strong>
-            </Col>
-            <Col span={4}>
-              <strong>Quantity</strong>
-            </Col>
-            <Col span={4}>
-              <strong>amount</strong>
-            </Col>
-            <Col span={4}></Col>
-          </Row>
+          <div className="order-header pb-2 flex gap-3">
+            <div className="w-5/12 font-bold">Item ID</div>
+            <div className="w-3/12 font-bold">Price</div>
+            <div className="w-2/12 font-bold">Quantity</div>
+            <div className="w-1/12 font-bold">Amount</div>
+            <div className="w-1/12"></div>
+          </div>
+
           <Form.List name="orders" initialValue={orders}>
             {(fields, { add, remove }) => (
               <>
                 {fields.map(({ key, name, ...restField }, index) => (
-                  <Row gutter={16} key={key}>
-                    <Col span={8}>
+                  <div key={key} className="flex gap-x-3 mb-0 p-0">
+                    <div className="w-5/12">
                       <Form.Item
                         {...restField}
                         name={[name, "itemId"]}
@@ -397,10 +450,11 @@ function AddOrder() {
                           }
                           options={filterOrderData(orders[index]?.itemId || "")}
                           onSelect={(value) => handleOrderSelect(value, index)}
+                          className="m-0"
                         />
                       </Form.Item>
-                    </Col>
-                    <Col span={4}>
+                    </div>
+                    <div className="w-3/12">
                       <Form.Item
                         {...restField}
                         name={[name, "price"]}
@@ -418,8 +472,8 @@ function AddOrder() {
                           }
                         />
                       </Form.Item>
-                    </Col>
-                    <Col span={4}>
+                    </div>
+                    <div className="w-2/12">
                       <Form.Item
                         {...restField}
                         name={[name, "piece"]}
@@ -436,17 +490,13 @@ function AddOrder() {
                           }
                         />
                       </Form.Item>
-                    </Col>
-                    <Col span={4}>
-                      <Col span={4}>
-                        <Form.Item {...restField} name={[name, "amount"]}>
-                          <div className=" text-black text-center">
-                            {orders[index]?.amount || 0}
-                          </div>
-                        </Form.Item>
-                      </Col>
-                    </Col>
-                    <Col span={4}>
+                    </div>
+                    <div className="w-1/12  text-black">
+                      <Form.Item {...restField} name={[name, "amount"]}>
+                        {orders[index]?.amount || 0}
+                      </Form.Item>
+                    </div>
+                    <div className="w-1/12">
                       <Button
                         type="link"
                         danger
@@ -458,19 +508,27 @@ function AddOrder() {
                           setOrders(updatedOrders);
                         }}
                       >
-                        Remove
+                        <MinusCircleOutlined className="text-2xl" />
                       </Button>
-                    </Col>
-                  </Row>
+                    </div>
+                  </div>
                 ))}
-                <div className="flex justify-start mt-2">
+
+                <div className="flex justify-start mt-0">
                   <Button
                     type="primary"
                     onClick={() => {
                       add();
                       const updatedOrders = [
                         ...orders,
-                        { itemId: "", price: 0, piece: 0, amount: 0 },
+                        {
+                          itemId: "",
+                          price: 0,
+                          piece: 0,
+                          amount: 0,
+                          collection: "",
+                          number: 0,
+                        },
                       ];
                       setOrders(updatedOrders);
                       forms.setFieldsValue({

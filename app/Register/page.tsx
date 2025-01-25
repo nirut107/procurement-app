@@ -14,11 +14,11 @@ export default function Order() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handleOnChange = (e) => {
+  const handleOnChange = (e: any) => {
     setInput({ ...input, [e.target.name]: e.target.value });
   };
 
-  const onSubmit = async (e) => {
+  const onSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {

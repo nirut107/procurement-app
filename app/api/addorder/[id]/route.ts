@@ -4,17 +4,15 @@ import { NextResponse } from "next/server";
 const prisma = new PrismaClient();
 
 // -------------- DELETE ------------------------
-
 export async function DELETE(
-  req: Request,
-  context: { params: { id: number } }
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
-  const id = params?.id;
+  const id = (await params).id;
 
-  if (!id) {
+  if (!id || isNaN(Number(id))) {
     return NextResponse.json(
-      { error: "Order ID is required" },
+      { error: "Valid order ID is required" },
       { status: 400 }
     );
   }
@@ -36,10 +34,11 @@ export async function DELETE(
 }
 
 // --------------------------- PUT -----------------------------
-
-export async function PUT(req: Request, context: { params: { id: number } }) {
-  const params = await context.params;
-  const id = params?.id;
+export async function PUT(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const id = (await params).id;
 
   if (!id || isNaN(Number(id))) {
     return NextResponse.json(
@@ -49,7 +48,7 @@ export async function PUT(req: Request, context: { params: { id: number } }) {
   }
 
   try {
-    const body = await req.json();
+    const body = await _request.json();
 
     if (!body || Object.keys(body).length === 0) {
       return NextResponse.json(
@@ -74,14 +73,15 @@ export async function PUT(req: Request, context: { params: { id: number } }) {
       { error: "Failed to update order" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
-export async function GET(req: Request, context: { params: { id: number } }) {
-  const params = context.params;
-  const id = params?.id;
+// --------------------------- GET -----------------------------
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const id = (await params).id;
 
   if (!id || isNaN(Number(id))) {
     return NextResponse.json(

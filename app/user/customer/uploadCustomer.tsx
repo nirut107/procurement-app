@@ -1,5 +1,8 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useCounterStore } from "@/app/providers/app-store-provider";
 import { InboxOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
@@ -12,6 +15,8 @@ export default function UploadCustomer() {
   const [file, setFile] = useState<File | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const { customer, createCustomer } = useCounterStore((state) => state);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   const draggerProps: UploadProps = {
     name: "file",
@@ -47,15 +52,21 @@ export default function UploadCustomer() {
           console.error("Failed to fetch customer data", error)
         );
     };
-    if (!customer || false) {
-      setIsLoaded(false);
-      fetchCustomerData();
-      setIsLoaded(true);
+	console.log("session",session)
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else {
+      if (customer.length == 0 || file) {
+        setIsLoaded(false);
+        fetchCustomerData();
+        setIsLoaded(true);
+      }
+      if (customer && customer.length > 0) {
+        setIsLoaded(true);
+      }
     }
-    if (customer && customer.length > 0) {
-      setIsLoaded(true);
-    }
-  }, [customer, file]);
+  }, [customer, file, createCustomer, status, router]);
+
   function previewData() {
     if (file) {
       const reader = new FileReader();
@@ -67,11 +78,12 @@ export default function UploadCustomer() {
           console.log("SN", sheetName);
           const workSheet = workbook.Sheets[sheetName];
           const json = XLSX.utils.sheet_to_json(workSheet);
+		  
           const sanitized = json.map((obj) => {
-            const sanitizedObj = {};
-            for (const key in obj) {
+            const sanitizedObj : Record<string, any> = {};
+            for (const key in obj as Record<string, any>) {
               const sanitizedKey = key.replace(/[.\s]/g, "_");
-              sanitizedObj[sanitizedKey] = obj[key];
+              sanitizedObj[sanitizedKey] = (obj as Record<string, any>)[key];
             }
             return sanitizedObj;
           });
@@ -108,10 +120,6 @@ export default function UploadCustomer() {
         </p>
         <p className="ant-upload-text">
           Click or drag file to this area to upload
-        </p>
-        <p className="ant-upload-hint">
-          Support for a single or bulk upload. Strictly prohibited from
-          uploading company data or other banned files.
         </p>
       </Dragger>
       {!isLoaded ? (

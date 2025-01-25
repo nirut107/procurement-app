@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const customer = await prisma.customer.findMany();
     return NextResponse.json(customer);
@@ -38,8 +38,14 @@ export async function POST(req: Request) {
       { status: 200 }
     );
   } catch (error) {
-    console.log(error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    } else {
+      return NextResponse.json(
+        { error: "An unknown error occurred" },
+        { status: 500 }
+      );
+    }
   } finally {
     await prisma.$disconnect();
   }

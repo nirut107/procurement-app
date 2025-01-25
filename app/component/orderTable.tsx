@@ -15,6 +15,20 @@ import {
   Button,
 } from "antd";
 import { useCounterStore } from "@/app/providers/app-store-provider";
+import { Order } from "../store/app-store";
+
+// types/jspdf-autotable.d.ts
+
+declare module "jspdf" {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+    lastAutoTable?: { finalY: number };
+  }
+}
+
+interface OrderTableProps {
+  onEditOrder: (id: string) => void;
+}
 
 const useStyle = createStyles(({ token }) => ({
   "my-modal-body": {
@@ -35,9 +49,9 @@ const useStyle = createStyles(({ token }) => ({
   },
 }));
 
-export default function OrderTable({ onEditOrder }) {
+const OrderTable: React.FC<OrderTableProps> = ({ onEditOrder }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const { order = [], createOrder } = useCounterStore((state) => state);
+  const { order, createOrder } = useCounterStore((state) => state);
   const [isLoading, setLoading] = useState(true);
   const [pdfUrl, setPdfUrl] = useState("");
   const [Id, setId] = useState("");
@@ -73,13 +87,13 @@ export default function OrderTable({ onEditOrder }) {
     },
   };
 
-  const pdfOnModel = (invoiceData) => {
+  const pdfOnModel = (invoiceData: any) => {
     console.log(invoiceData);
     generatePDF(invoiceData);
     setIsModalVisible(true);
   };
 
-  const generatePDF = (invoiceData) => {
+  const generatePDF = (invoiceData: any) => {
     const doc = new jsPDF();
     doc.addFileToVFS("Sarabun-Regular.ttf", sarabunFont);
     doc.addFont("Sarabun-Regular.ttf", "Sarabun", "normal");
@@ -102,7 +116,7 @@ export default function OrderTable({ onEditOrder }) {
     doc.autoTable({
       startY: 70,
       head: [["No.", "Code", "Collection", "Unit Price", "Quantity", "Amount"]],
-      body: invoiceData.orders.map((item, index) => [
+      body: invoiceData.orders.map((item: any, index: number) => [
         index + 1,
         item.itemId,
         item.collection,
@@ -112,33 +126,36 @@ export default function OrderTable({ onEditOrder }) {
       ]),
     });
 
-    const finalY = doc.lastAutoTable.finalY + 10;
-    const rightMargin = 200;
-    const currencyWidth = doc.getTextWidth(" THB");
+    if (doc.lastAutoTable) {
+      const finalY = doc.lastAutoTable.finalY + 10;
 
-    doc.text("Quantity :", 155, finalY + 10);
-    doc.text(
-      `${invoiceData.number}`,
-      rightMargin - doc.getTextWidth(`${invoiceData.number}`) - currencyWidth,
-      finalY + 10
-    );
-    doc.text("Total :", 160.5, finalY + 20);
-    doc.text(
-      `${invoiceData.total.toFixed(2)}`,
-      rightMargin -
-        doc.getTextWidth(`${invoiceData.total.toFixed(2)}`) -
-        currencyWidth,
-      finalY + 20
-    );
+      const rightMargin = 200;
+      const currencyWidth = doc.getTextWidth(" THB");
+
+      doc.text("Quantity :", 155, finalY + 10);
+      doc.text(
+        `${invoiceData.number}`,
+        rightMargin - doc.getTextWidth(`${invoiceData.number}`) - currencyWidth,
+        finalY + 10
+      );
+      doc.text("Total :", 160.5, finalY + 20);
+      doc.text(
+        `${invoiceData.total.toFixed(2)}`,
+        rightMargin -
+          doc.getTextWidth(`${invoiceData.total.toFixed(2)}`) -
+          currencyWidth,
+        finalY + 20
+      );
+    }
 
     const pdfBlob = doc.output("blob");
     const pdfUrl = URL.createObjectURL(pdfBlob);
     setPdfUrl(pdfUrl);
   };
 
-  const deleleOrder = async (id) => {
+  const deleleOrder = async (id: number) => {
     console.log("ID", id);
-    const newOrder = order.filter((e) => e.id != id);
+    const newOrder = order.filter((e) => Number(e.id) != id);
     createOrder(newOrder);
     try {
       const response = await fetch(`/api/addorder/${id}`, {
@@ -146,10 +163,12 @@ export default function OrderTable({ onEditOrder }) {
       });
       if (response.ok) {
       }
-    } catch (error) {}
+    } catch (error) {
+      console.log(error);
+    }
   };
 
-  const clickToDelete = (e) => {
+  const clickToDelete = (e: any) => {
     deleleOrder(e);
   };
 
@@ -187,20 +206,23 @@ export default function OrderTable({ onEditOrder }) {
           const orders = await response.json();
           console.log(orders);
           const transferData = orders
-            .map((order) => ({
+            .map((order: Order) => ({
               key: order.id,
               id: order.id,
               Date: new Date(order.createdAt).toLocaleDateString(),
               customerId: order.customerId,
+              createdAt: order.createdAt,
               customerName: order.customerName,
               orders: order.orders,
               status: order.status,
               total: order.total,
+              number: order.number,
               edit: false,
               IdAndName: order.customerId + " - " + order.customerName,
             }))
-            .sort((a, b) => b.id - a.id);
+            .sort((a: any, b: any) => b.id - a.id);
           createOrder(transferData);
+          console.log("data", transferData);
           setLoading(false);
         } else {
           throw new Error("Cannot get order");
@@ -209,13 +231,11 @@ export default function OrderTable({ onEditOrder }) {
         console.log(error);
       }
     }
-    if (!order) {
-      setLoading(true);
+    if (order.length == 0 && isLoading) {
       getAllOrder();
-    } else {
       setLoading(false);
     }
-  }, []);
+  }, [order]);
 
   const statusMenu: MenuProps["items"] = [
     {
@@ -245,7 +265,7 @@ export default function OrderTable({ onEditOrder }) {
       title: "Status",
       key: "Status",
       dataIndex: "status",
-      render: (tag: String) => {
+      render: (tag: string) => {
         let color = "volcano";
         if (!tag) {
           return <Tag color="volcano">IN PROGRESS</Tag>;
@@ -259,7 +279,7 @@ export default function OrderTable({ onEditOrder }) {
     {
       title: "Action",
       key: "action",
-      render: (order) => (
+      render: (order: Order) => (
         <Space>
           <Button className="m-2" onClick={() => onEditOrder(order.id)}>
             Edit
@@ -289,9 +309,7 @@ export default function OrderTable({ onEditOrder }) {
       ),
     },
   ];
-  if (isLoading) {
-    return <div>isLoading.....</div>;
-  }
+
   return (
     <>
       <Table
@@ -351,4 +369,6 @@ export default function OrderTable({ onEditOrder }) {
       </ConfigProvider>
     </>
   );
-}
+};
+
+export default OrderTable;

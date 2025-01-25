@@ -21,8 +21,8 @@ model Order {
   id           Int      @id @default(autoincrement())
   customerId   String
   customerName String
-  orders       Json     // Store order items as JSON
-  remark       String?  // Optional
+  orders       Json     
+  remark       String?
   createdAt    DateTime @default(now())
   status		String @default("IN PROGRESS")
   total      Float @default(0)
@@ -52,5 +52,12 @@ model customer {
 	saleCode		String
 	email			String
 	province		String
+}
+
+model task {
+	id				String @id @default(uuid())
+	month			String
+	year			String
+	goal			Int @default(0)
 }
 

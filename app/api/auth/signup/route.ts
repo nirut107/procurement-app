@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     });
     return Response.json(newUser);
   } catch (error) {
-    // console.log(error);
+	console.log(error)
     return NextResponse.rewrite(new URL('/user', req.url));
   }
 }

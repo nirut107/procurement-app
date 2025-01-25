@@ -1,5 +1,3 @@
-"use client";
-import { getServerSession } from "next-auth";
 import Sidebar from "../component/mainlayout";
 
 export default async function Layout({

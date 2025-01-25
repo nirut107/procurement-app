@@ -22,7 +22,7 @@ export default function Home() {
         throw new Error(result.error);
       }
 
-      router.push("/user/order");
+      router.push("/user/home");
     } catch (error) {
       setLoading(false);
       console.error(error);
@@ -75,7 +75,7 @@ export default function Home() {
         </Form>
 
         <Button type="link" onClick={regis} className="mt-4 text-center w-full">
-          Don't have an account? Register
+          `Don't have an account? Register`
         </Button>
       </div>
     </div>

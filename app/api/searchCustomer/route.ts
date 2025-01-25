@@ -1,12 +1,16 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+declare global {
+  var prisma: PrismaClient | undefined;
+}
+
 const prisma = globalThis.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== "production") globalThis.prisma = prisma;
 
--
 export async function GET(request: Request) {
-  const { search } = new URL(request.url).searchParams;
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search");
   if (!search) {
     return NextResponse.json([]);
   }
@@ -18,13 +22,11 @@ export async function GET(request: Request) {
           {
             customerCode: {
               contains: search,
-              mode: "insensitive", // Case-insensitive search
             },
           },
           {
             customerName: {
               contains: search,
-              mode: "insensitive", // Case-insensitive search
             },
           },
         ],

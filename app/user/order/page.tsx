@@ -1,20 +1,17 @@
 "use client";
 import { useSession } from "next-auth/react";
 import OrderTable from "@/app/component/orderTable";
-import React, { Key, useState } from "react";
-import { useRouter } from "next/navigation";
 import AddOrder from "./AddOrder";
 import { useCounterStore } from "@/app/providers/app-store-provider";
 
 export default function Order() {
-  const { editOrder, createEditOrder } = useCounterStore((state) => state);
-  const { openOrder, setOpenOrder } = useCounterStore((state) => state);
+  const { createEditOrder } = useCounterStore((state) => state);
+  const { setOpenOrder } = useCounterStore((state) => state);
   const { data: session, status } = useSession();
-  const router = useRouter();
   console.log("session", session);
   console.log("status", status);
-  const handleEditOrder = async (orderId) => {
-    console.log("orderID", orderId);
+
+  const handleEditOrder = async (orderId: string) => {
     try {
       const response = await fetch(`/api/addorder/${orderId}`, {
         method: "GET",
@@ -40,7 +37,7 @@ export default function Order() {
   };
 
   return (
-    <div>
+    <div className=" bg-gray-100">
       <div className="flex justify-end mx-4">
         <AddOrder />
       </div>

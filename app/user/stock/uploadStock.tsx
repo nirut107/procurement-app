@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { useCounterStore } from "@/app/providers/app-store-provider";
 import { InboxOutlined } from "@ant-design/icons";
@@ -11,6 +13,8 @@ export default function UploadStock() {
   const [isLoaded, setIsLoaded] = useState(false);
   const { item, createStock } = useCounterStore((state) => state);
   const [file, setFile] = useState<File | null>(null);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   const draggerProps: UploadProps = {
     name: "file",
@@ -44,68 +48,75 @@ export default function UploadStock() {
         .then((stockDB) => createStock(stockDB))
         .catch((error) => console.error("Failed to fetch stock data", error));
     };
-    if (!item) {
-      fetchStockData();
-      setIsLoaded(true);
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else {
+      if (item.length == 0 || file) {
+        fetchStockData();
+        setIsLoaded(true);
+      }
+      if (item && item.length > 0) {
+        setIsLoaded(true);
+      }
     }
-    if (item && item.length > 0) {
-      setIsLoaded(true);
-    }
-  }, [item]);
+  }, [item, createStock, status, router]);
 
   function previewData() {
     if (file) {
       const reader = new FileReader();
       reader.onload = async (e) => {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
+        if (e.target && e.target.result instanceof ArrayBuffer) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const sheetNames = workbook.SheetNames;
+            console.log("Sheet Names:", sheetNames);
 
-          const sheetNames = workbook.SheetNames;
-          console.log("Sheet Names:", sheetNames);
+            const workSheet = workbook.Sheets["Bolon"];
+            console.log("Raw Worksheet Data:", workSheet);
 
-          const workSheet = workbook.Sheets["Bolon"];
-          console.log("Raw Worksheet Data:", workSheet);
-
-          const json = XLSX.utils.sheet_to_json(workSheet, {
-            raw: false,
-            defval: "",
-            skipHidden: true,
-            range: "A1:Z1000",
-          });
-          const jsons = json.map((row) => {
-            const cleanedRow = {};
-            for (const key in row) {
-              const value = row[key];
-              if (typeof value === "string" && value.includes(",")) {
-                cleanedRow[key] = parseFloat(value.replace(/,/g, ""));
-              } else {
-                cleanedRow[key] = value;
+            const json = XLSX.utils.sheet_to_json(workSheet, {
+              raw: false,
+              defval: "",
+              skipHidden: true,
+              range: "A1:Z1000",
+            });
+            const jsons = json.map((row) => {
+              const cleanedRow: Record<string, any> = {};
+              for (const key in row as Record<string, any>) {
+                const value = (row as Record<string, any>)[key];
+                if (typeof value === "string" && value.includes(",")) {
+                  cleanedRow[key] = parseFloat(value.replace(/,/g, ""));
+                } else {
+                  cleanedRow[key] = value;
+                }
               }
+              return cleanedRow;
+            });
+            console.log("Sanitized JSON:", jsons);
+            createStock(jsons);
+
+            // Post data to the server
+            const res = await fetch("/api/uploadStock", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(jsons),
+            });
+
+            if (res.ok) {
+              console.log("Data successfully uploaded!");
+            } else {
+              console.error("Failed to upload data");
             }
-            return cleanedRow;
-          });
-          console.log("Sanitized JSON:", jsons);
-          createStock(jsons);
 
-          // Post data to the server
-          const res = await fetch("/api/uploadStock", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(jsons),
-          });
-
-          if (res.ok) {
-            console.log("Data successfully uploaded!");
-          } else {
-            console.error("Failed to upload data");
+            setIsLoaded(true);
+          } catch (error) {
+            console.error("Error processing Excel file:", error);
           }
-
-          setIsLoaded(true);
-        } catch (error) {
-          console.error("Error processing Excel file:", error);
+        } else {
+          console.error("File reading error: No valid result found");
         }
       };
 
@@ -120,10 +131,6 @@ export default function UploadStock() {
         </p>
         <p className="ant-upload-text">
           Click or drag file to this area to upload
-        </p>
-        <p className="ant-upload-hint">
-          Support for a single or bulk upload. Strictly prohibited from
-          uploading company data or other banned files.
         </p>
       </Dragger>
       {!isLoaded ? (

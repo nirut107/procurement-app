@@ -1,6 +1,6 @@
 "use client";
-import React, { useState} from "react";
-import { useRouter, usePathname } from "next/navigation";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Avatar from "./avatar";
 import {
   ContainerOutlined,
@@ -8,14 +8,16 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   PieChartOutlined,
-  CrownOutlined,
+  LeftSquareOutlined,
+  HomeOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Menu, Space } from "antd";
+import { Menu } from "antd";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
 const items: MenuItem[] = [
+  { key: "home", icon: <HomeOutlined />, label: "Home" },
   { key: "order", icon: <PieChartOutlined />, label: "Order" },
   { key: "stock", icon: <DesktopOutlined />, label: "Stock" },
   { key: "customer", icon: <ContainerOutlined />, label: "Customer" },
@@ -23,18 +25,23 @@ const items: MenuItem[] = [
 
 const Sidebar = ({ children }: Readonly<{ children: React.ReactNode }>) => {
   const [collapsed, setCollapsed] = useState(false);
-  const [bar, setBar] = useState("order");
+  const [bar, setBar] = useState("home");
   const router = useRouter();
-  const pathname = usePathname();
 
   const navigateToPage = (path: string) => {
     router.push(`/user/${path}`);
-    console.log(path);
+    console.log("1", path);
     setBar(path);
+    console.log("bar", bar);
   };
 
   const toggleCollapsed = () => {
     setCollapsed(!collapsed);
+  };
+
+  const ClickGoHome = () => {
+    setBar("home");
+    router.push("/user/home");
   };
 
   return (
@@ -54,11 +61,10 @@ const Sidebar = ({ children }: Readonly<{ children: React.ReactNode }>) => {
       <div className="flex flex-wrap justify-between w-full h-screen">
         <div
           className={`${collapsed ? "w-24" : "w-48"}
-           transition-all duration-300 ease-in-out  bg-[#001529] flex justify-between px-2 py-4 top-1`}
+             transition-all duration-300 ease-in-out  bg-[#001529] flex justify-between px-2 py-4 top-1`}
         >
           <Menu
-            defaultSelectedKeys={[bar]}
-            defaultOpenKeys={[bar]}
+            selectedKeys={[bar]}
             mode="inline"
             theme="dark"
             inlineCollapsed={collapsed}
@@ -72,10 +78,9 @@ const Sidebar = ({ children }: Readonly<{ children: React.ReactNode }>) => {
         </div>
 
         <div className=" flex-1 w-80 overflow-auto bg-white">
-          <div className=" text-black text-2xl flex justify-start px-4 pt-4">
-			
-            <CrownOutlined />
-            <strong>{bar}</strong>
+          <div className="bg-gray-100 text-black text-2xl flex justify-start px-4 py-3 items-center">
+            <LeftSquareOutlined onClick={ClickGoHome} />
+            <strong className="pl-2">{bar.toUpperCase()}</strong>
           </div>
           {children}
         </div>

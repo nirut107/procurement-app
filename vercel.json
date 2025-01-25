@@ -7,9 +7,6 @@
 		  "includeFiles": ["prisma/schema.prisma"]
 		}
 	  }
-	],
-	"hooks": {
-	  "build": "npm run prisma:generate"
-	}
+	]
   }
   

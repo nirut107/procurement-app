@@ -13,6 +13,7 @@ import {
   MenuProps,
   Dropdown,
   Button,
+  message,
 } from "antd";
 import { useCounterStore } from "@/app/providers/app-store-provider";
 import { Order } from "../store/app-store";
@@ -57,6 +58,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ onEditOrder }) => {
   const [Id, setId] = useState("");
   const { styles } = useStyle();
   const token = useTheme();
+  const [messageApi, contextHolder] = message.useMessage();
 
   const classNames = {
     body: styles["my-modal-body"],
@@ -154,17 +156,25 @@ const OrderTable: React.FC<OrderTableProps> = ({ onEditOrder }) => {
   };
 
   const deleleOrder = async (id: number) => {
-    console.log("ID", id);
     const newOrder = order.filter((e) => Number(e.id) != id);
+    const OldOrder = order;
     createOrder(newOrder);
     try {
       const response = await fetch(`/api/addorder/${id}`, {
         method: "DELETE",
       });
       if (response.ok) {
-      }
+      } else {
+		throw Error('error')
+	  }
     } catch (error) {
-      console.log(error);
+      messageApi.open({
+        key: "updatable",
+        type: "error",
+        content: "can't delete... plase check Internet",
+        duration: 2,
+      });
+      createOrder(OldOrder);
     }
   };
 
@@ -177,6 +187,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ onEditOrder }) => {
     const updatedOrder = order.map((item) =>
       item.id === Id ? { ...item, status } : item
     );
+    const oldOrder = order;
     createOrder(updatedOrder);
     try {
       const response = await fetch(`/api/addorder/${Id}`, {
@@ -192,7 +203,13 @@ const OrderTable: React.FC<OrderTableProps> = ({ onEditOrder }) => {
         throw new Error("Failed to update order status");
       }
     } catch (error) {
-      console.error("Error updating order status:", error);
+      messageApi.open({
+        key: "updatable",
+        type: "error",
+        content: "can't set status... plase check Internet",
+        duration: 2,
+      });
+	  createOrder(oldOrder);
     }
   };
 
@@ -312,6 +329,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ onEditOrder }) => {
 
   return (
     <>
+      {contextHolder}
       <Table
         columns={columns}
         dataSource={order || []}

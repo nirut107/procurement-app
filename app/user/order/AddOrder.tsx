@@ -14,6 +14,7 @@ import {
   Space,
   AutoComplete,
   message,
+  Tooltip,
 } from "antd";
 
 interface OrderItem {
@@ -23,17 +24,6 @@ interface OrderItem {
   collection: string;
   amount: number;
   number: number;
-}
-
-interface Item {
-  searchstring: string;
-  price: number;
-  version: string;
-}
-
-interface Customer {
-  customerCode: String;
-  customerName: String;
 }
 interface FormValues {
   customerId: string;
@@ -335,7 +325,12 @@ function AddOrder() {
           throw new Error("Failed to submit order");
         }
       } catch (error) {
-        console.error(error);
+        messageApi.open({
+          key: "updatable",
+          type: "error",
+          content: "can't save... plase check Internet",
+          duration: 2,
+        });
       }
     }
   };
@@ -366,6 +361,14 @@ function AddOrder() {
     forms.resetFields();
     setOpenOrder(false);
   };
+
+  const isDuplicateItem = (itemId: string, index: number) => {
+    return (
+      orders.filter((order, idx) => order.itemId === itemId && idx !== index)
+        .length > 0
+    );
+  };
+
   return (
     <>
       {contextHolder}
@@ -438,10 +441,16 @@ function AddOrder() {
                       <Form.Item
                         {...restField}
                         name={[name, "itemId"]}
+                        style={{
+                          border: isDuplicateItem(orders[index]?.itemId, index)
+                            ? "1px solid red"
+                            : undefined,
+                        }}
                         rules={[
                           { required: true, message: "Please select an item" },
                         ]}
                       >
+						<Tooltip title={isDuplicateItem(orders[index]?.itemId, index) ? "Item is duplicate" : ""}>
                         <AutoComplete
                           placeholder="Select Item"
                           value={orders[index]?.itemId || ""}
@@ -452,6 +461,7 @@ function AddOrder() {
                           onSelect={(value) => handleOrderSelect(value, index)}
                           className="m-0"
                         />
+						</Tooltip>
                       </Form.Item>
                     </div>
                     <div className="w-3/12">

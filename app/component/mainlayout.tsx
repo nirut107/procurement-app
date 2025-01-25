@@ -1,6 +1,6 @@
 "use client";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useTransition, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import Avatar from "./avatar";
 import {
   ContainerOutlined,
@@ -12,7 +12,7 @@ import {
   HomeOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Menu } from "antd";
+import { Menu, Skeleton } from "antd";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -25,14 +25,25 @@ const items: MenuItem[] = [
 
 const Sidebar = ({ children }: Readonly<{ children: React.ReactNode }>) => {
   const [collapsed, setCollapsed] = useState(false);
-  const [bar, setBar] = useState("home");
+  const [isPending, startTransition] = useTransition();
+  const [bar, setBar] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const pathParts = pathname.split("/");
+    if (pathParts[2] === "addorder" && pathParts[3]) {
+      setBar(pathParts[3]);
+    } else {
+      setBar(pathParts[2] || "home");
+    }
+  }, [pathname]);
 
   const navigateToPage = (path: string) => {
-    router.push(`/user/${path}`);
-    console.log("1", path);
     setBar(path);
-    console.log("bar", bar);
+    startTransition(() => {
+      router.push(`/user/${path}`);
+    });
   };
 
   const toggleCollapsed = () => {
@@ -41,7 +52,9 @@ const Sidebar = ({ children }: Readonly<{ children: React.ReactNode }>) => {
 
   const ClickGoHome = () => {
     setBar("home");
-    router.push("/user/home");
+    startTransition(() => {
+      router.push("/user/home");
+    });
   };
 
   return (
@@ -82,7 +95,7 @@ const Sidebar = ({ children }: Readonly<{ children: React.ReactNode }>) => {
             <LeftSquareOutlined onClick={ClickGoHome} />
             <strong className="pl-2">{bar.toUpperCase()}</strong>
           </div>
-          {children}
+          {isPending ? <Skeleton active className="p-10" /> : children}
         </div>
       </div>
     </>

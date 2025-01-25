@@ -3,7 +3,6 @@ import "jspdf-autotable";
 import React, { useEffect, useState } from "react";
 import { useForm } from "antd/es/form/Form";
 import { useCounterStore } from "@/app/providers/app-store-provider";
-import { Order } from "@/app/store/app-store";
 import {
   Progress,
   Card,
@@ -14,12 +13,37 @@ import {
   Form,
   Input,
   DatePicker,
+  Empty,
+  message,
 } from "antd";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import { Order } from "@/app/store/app-store";
 
 // -------- Monthpicker ---------
 dayjs.extend(customParseFormat);
+
+interface Tasks {
+  id: string;
+  month: string;
+  year: string;
+  goal: number;
+}
+
+const allMonths = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 const conicColors: ProgressProps["strokeColor"] = {
   "0%": "#ffccc7",
@@ -27,36 +51,35 @@ const conicColors: ProgressProps["strokeColor"] = {
   "100%": "#87d068",
 };
 
-const tasks = [
-  {
-    id: 1,
-    name: "Plan A",
-    targetAmount: 100000,
-    currentAmount: 450000,
-    unitPrice: 100,
-  },
-  {
-    id: 2,
-    name: "Plan B",
-    targetAmount: 50000,
-    currentAmount: 25000,
-    unitPrice: 50,
-  },
-  {
-    id: 3,
-    name: "Plan C",
-    targetAmount: 30000,
-    currentAmount: 10000,
-    unitPrice: 30,
-  },
-];
-
 export default function TaskMonthly() {
   const { order } = useCounterStore((state) => state);
+  const [fetchtasks, setTask] = useState<Tasks[]>([]);
   const [openPopover, setOpenPopover] = useState(false);
   const [form] = useForm();
+  const [messageApi, contextHolder] = message.useMessage();
 
+  const getTask = async () => {
+    fetch("/api/home/task", { method: "GET" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch task data");
+        }
+        return response.json();
+      })
+      .then((taskData: Tasks[]) => {
+        console.log("Fetched tasks:", taskData);
+        setTask(taskData);
+      })
+      .catch((error) => console.error(error));
+  };
+
+//   --------------------- GET --------------------------
   const handleSubmit = async (values: any) => {
+    messageApi.open({
+      key: "updatable",
+      type: "loading",
+      content: "Saving",
+    });
     try {
       const response = await fetch("/api/home/task", {
         method: "POST",
@@ -70,15 +93,63 @@ export default function TaskMonthly() {
         }),
       });
       if (response.ok) {
-        console.log(response.body);
-		form.resetFields();
+        getTask();
+        form.resetFields();
         setOpenPopover(false);
+        messageApi.open({
+          key: "updatable",
+          type: "success",
+          content: "Success",
+          duration: 2,
+        });
+      } else {
+        throw Error("error");
       }
     } catch {
       console.log("Can not save task");
       setOpenPopover(false);
+      messageApi.open({
+        key: "updatable",
+        type: "error",
+        content: "can't save... plase check Internet",
+        duration: 2,
+      });
     }
   };
+
+//   ------------------------- DETETE -------------------------
+  const deleteTask = async (taskId: string) => {
+    const newTask = fetchtasks.filter((e) => e.id != taskId);
+    messageApi.open({
+      key: "updatable",
+      type: "loading",
+      content: "Deleting",
+    });
+    try {
+      const response = await fetch(`/api/home/task/${taskId}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setTask(newTask);
+        messageApi.open({
+          key: "updatable",
+          type: "success",
+          content: "Success",
+          duration: 2,
+        });
+      } else {
+        throw Error("error");
+      }
+    } catch (error) {
+      messageApi.open({
+        key: "updatable",
+        type: "error",
+        content: "can't save... plase check Internet",
+        duration: 2,
+      });
+    }
+  };
+
   const content = (
     <Form
       form={form}
@@ -114,10 +185,29 @@ export default function TaskMonthly() {
     </Form>
   );
 
-  useEffect(() => {}, [order]);
+  useEffect(() => {
+    getTask().then(() => console.log("fetch", fetchtasks));
+    console.log(order);
+  }, []);
+
+  const calculateCurrentAmount = (task: Tasks) => {
+    return order
+      .filter((order) => {
+        const orderDate = new Date(order.createdAt);
+        const orderMonth = (orderDate.getMonth() + 1)
+          .toString()
+          .padStart(2, "0");
+        const orderYear = orderDate.getFullYear().toString();
+        return orderMonth === task.month && orderYear === task.year;
+      })
+      .reduce((sum, order) => {
+        return sum + order.orders.reduce((acc, item) => acc + item.piece, 0);
+      }, 0);
+  };
 
   return (
     <>
+      {contextHolder}
       <div className=" flex justify-end p-3">
         <Popover
           placement="bottom"
@@ -128,21 +218,83 @@ export default function TaskMonthly() {
           <Button onClick={() => setOpenPopover(true)}>add task</Button>
         </Popover>
       </div>
-      {tasks.map((task) => {
-        const progress = (task.currentAmount / task.targetAmount) * 100;
-        return (
-          <Card key={task.id} title={task.name} bordered={true}>
-            <p>Target: {task.targetAmount.toLocaleString()} units</p>
-            <p>Current: {task.currentAmount.toLocaleString()} units</p>
-            <p>Unit Price: ${task.unitPrice}</p>
-            <Progress
-              percent={Math.round(progress)}
-              status={progress >= 100 ? "success" : "active"}
-              strokeColor={conicColors}
-            />
-          </Card>
-        );
-      })}
+      {fetchtasks &&
+      fetchtasks.filter((task) => {
+        const currentAmount = calculateCurrentAmount(task);
+        const progress = (currentAmount / task.goal) * 100;
+        return progress < 100;
+      }).length === 0 ? (
+        <Card key="no-task" title=" " bordered={true}>
+          <Empty description="No tasks available" />
+        </Card>
+      ) : (
+        fetchtasks
+          .filter((task) => {
+            const currentAmount = calculateCurrentAmount(task);
+            const progress = (currentAmount / task.goal) * 100;
+            return progress < 100;
+          })
+          .map((task) => {
+            const currentAmount = calculateCurrentAmount(task);
+            const progress = (currentAmount / task.goal) * 100;
+            return (
+              <Card
+                key={task.id}
+                title={allMonths[Number(task.month) - 1] + " " + task.year}
+                bordered={true}
+              >
+                <p className="my-1">Target: {task.goal} units</p>
+                <div>{currentAmount.toLocaleString() + " / " + task.goal}</div>
+                <Progress
+                  percent={Math.round(progress)}
+                  status={progress >= 100 ? "success" : "active"}
+                  strokeColor={conicColors}
+                />
+                <Button
+                  type="dashed"
+                  onClick={() => deleteTask(task.id)}
+                  style={{ marginTop: "10px" }}
+                >
+                  Delete
+                </Button>
+              </Card>
+            );
+          })
+      )}
+      ;
+      {fetchtasks &&
+        fetchtasks
+          .filter((task) => {
+            const currentAmount = calculateCurrentAmount(task);
+            const progress = (currentAmount / task.goal) * 100;
+            return progress >= 100;
+          })
+          .map((task) => {
+            const currentAmount = calculateCurrentAmount(task);
+            const progress = (currentAmount / task.goal) * 100;
+            return (
+              <Card
+                key={task.id}
+                title={allMonths[Number(task.month) - 1] + " " + task.year}
+                bordered={true}
+              >
+                <p className="my-1">Target: {task.goal} units</p>
+                <div>{currentAmount.toLocaleString() + " / " + task.goal}</div>
+                <Progress
+                  percent={Math.round(progress)}
+                  status={progress >= 100 ? "success" : "active"}
+                  strokeColor={conicColors}
+                />
+                <Button
+                  type="dashed"
+                  onClick={() => deleteTask(task.id)}
+                  style={{ marginTop: "10px" }}
+                >
+                  Delete
+                </Button>
+              </Card>
+            );
+          })}
     </>
   );
 }

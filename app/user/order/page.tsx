@@ -3,15 +3,23 @@ import { useSession } from "next-auth/react";
 import OrderTable from "@/app/component/orderTable";
 import AddOrder from "./AddOrder";
 import { useCounterStore } from "@/app/providers/app-store-provider";
+import { message } from "antd";
 
 export default function Order() {
   const { createEditOrder } = useCounterStore((state) => state);
   const { setOpenOrder } = useCounterStore((state) => state);
+  const [messageApi, contextHolder] = message.useMessage();
+
   const { data: session, status } = useSession();
   console.log("session", session);
   console.log("status", status);
 
   const handleEditOrder = async (orderId: string) => {
+    messageApi.open({
+      key: "updatable",
+      type: "loading",
+      content: "Loading",
+    });
     try {
       const response = await fetch(`/api/addorder/${orderId}`, {
         method: "GET",
@@ -22,6 +30,12 @@ export default function Order() {
           `Failed to fetch order with ID ${orderId}:`,
           response.status
         );
+        messageApi.open({
+          key: "updatable",
+          type: "error",
+          content: "can't load... plase check Internet",
+          duration: 2,
+        });
         return;
       }
 
@@ -38,6 +52,7 @@ export default function Order() {
 
   return (
     <div className=" bg-gray-100">
+      {contextHolder}
       <div className="flex justify-end mx-4">
         <AddOrder />
       </div>

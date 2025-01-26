@@ -19,7 +19,7 @@ model User {
 
 model Order {
   id           Int      @id @default(autoincrement())
-  customerId   String
+  customerId   String	
   customerName String
   orders       Json     
   remark       String?

@@ -10,7 +10,7 @@ export async function DELETE(
 ) {
   const id = (await params).id;
 
-  if (!id || isNaN(Number(id))) {
+  if (!id) {
     return NextResponse.json(
       { error: "Valid order ID is required" },
       { status: 400 }

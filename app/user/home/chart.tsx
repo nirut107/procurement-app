@@ -3,7 +3,7 @@ import "jspdf-autotable";
 import React, { useEffect, useState } from "react";
 import { useCounterStore } from "@/app/providers/app-store-provider";
 import { Order } from "@/app/store/app-store";
-import { Select, Progress, Card, ProgressProps, Segmented } from "antd";
+import { Select, ProgressProps, Segmented } from "antd";
 import {
   BarChart,
   Bar,
@@ -30,7 +30,6 @@ const allMonths = [
   "Nov",
   "Dec",
 ];
-
 const Quarterly = ["Jan - Mar", "Apr - Jun", "Jul - Sep", "Oct - Dec"];
 const Weekly = ["Week-1", "Week-2", "Week-3", "Week-4"];
 
@@ -57,51 +56,147 @@ export default function Chartdata() {
 
   useEffect(() => {
     processChartData(order);
-  }, [order, selectedYear, selectedMonth]);
+  }, [order, selectedYear, selectedMonth, option]);
 
   const processChartData = (order: Order[]) => {
-    console.log(order);
     const filteredOrders = order.filter((order) => {
       const orderYear = order.createdAt.slice(0, 4);
       const orderMonth = order.createdAt.slice(5, 7);
-      console.log(orderMonth, selectedMonth);
       return (
-        order.status == "SUCCESS" &&
+        order.status === "SUCCESS" &&
         orderYear === selectedYear &&
-        orderMonth === selectedMonth
+        ((option !== "Daily" && option !== "Weekly") ||
+          orderMonth == selectedMonth)
       );
     });
-    const monthlyData: { [key: string]: { sales: number; count: number } } =
-      allMonths.reduce((acc, month) => {
-        acc[month] = { sales: 0, count: 0 };
-        return acc;
-      }, {} as { [key: string]: { sales: number; count: number } });
+
+    type ChartDataItem = {
+      name: string;
+      sales: number;
+      orders: number;
+    };
 
     let totalRevenue = 0;
     let totalOrders = 0;
+    let formattedData: ChartDataItem[] = [];
 
-    filteredOrders.forEach((order) => {
-      const month = new Date(order.createdAt).toLocaleString("en-US", {
-        month: "short",
-      });
+    switch (option) {
+      case "Daily":
+        const daysInMonth = new Date(
+          Number(selectedYear),
+          Number(selectedMonth),
+          0
+        ).getDate();
+        const dailyData: { [key: string]: { sales: number; count: number } } =
+          {};
 
-      if (monthlyData[month]) {
-        monthlyData[month].sales += order.total;
-        monthlyData[month].count += 1;
-      }
+        for (let day = 1; day <= daysInMonth; day++) {
+          const dayKey = day.toString().padStart(2, "0");
+          dailyData[dayKey] = { sales: 0, count: 0 };
+        }
 
-      totalRevenue += order.total;
-      totalOrders += 1;
-    });
+        filteredOrders.forEach((order) => {
+          const day = order.createdAt.slice(8, 10);
+          if (dailyData[day]) {
+            dailyData[day].sales += order.total;
+            dailyData[day].count += 1;
+          }
+        });
 
-    setChartData(
-      allMonths.map((month) => ({
-        name: month,
-        sales: monthlyData[month].sales,
-        orders: monthlyData[month].count,
-      }))
-    );
+        formattedData = Object.keys(dailyData).map((day) => ({
+          name: day,
+          sales: dailyData[day].sales,
+          orders: dailyData[day].count,
+        }));
+        break;
 
+      case "Weekly":
+        const weeklyData = Weekly.reduce((acc, week) => {
+          acc[week] = { sales: 0, count: 0 };
+          return acc;
+        }, {} as { [key: string]: { sales: number; count: number } });
+
+        filteredOrders.forEach((order) => {
+          const day = parseInt(order.createdAt.slice(8, 10));
+          const weekIndex = Math.ceil(day / 7) - 1;
+          weeklyData[Weekly[weekIndex]].sales += order.total;
+          weeklyData[Weekly[weekIndex]].count += 1;
+          totalRevenue += order.total;
+          totalOrders += 1;
+        });
+
+        formattedData = Weekly.map((week) => ({
+          name: week,
+          sales: weeklyData[week].sales,
+          orders: weeklyData[week].count,
+        }));
+        break;
+
+      case "Monthly":
+        const monthlyData = allMonths.reduce((acc, month) => {
+          acc[month] = { sales: 0, count: 0 };
+          return acc;
+        }, {} as { [key: string]: { sales: number; count: number } });
+
+        filteredOrders.forEach((order) => {
+          const month = new Date(order.createdAt).toLocaleString("en-US", {
+            month: "short",
+          });
+          monthlyData[month].sales += order.total;
+          monthlyData[month].count += 1;
+          totalRevenue += order.total;
+          totalOrders += 1;
+        });
+
+        formattedData = allMonths.map((month) => ({
+          name: month,
+          sales: monthlyData[month].sales,
+          orders: monthlyData[month].count,
+        }));
+        break;
+
+      case "Quarterly":
+        const quarterlyData = Quarterly.reduce((acc, quarter) => {
+          acc[quarter] = { sales: 0, count: 0 };
+          return acc;
+        }, {} as { [key: string]: { sales: number; count: number } });
+
+        filteredOrders.forEach((order) => {
+          const month = parseInt(order.createdAt.slice(5, 7));
+          const quarterIndex = Math.floor((month - 1) / 3);
+          quarterlyData[Quarterly[quarterIndex]].sales += order.total;
+          quarterlyData[Quarterly[quarterIndex]].count += 1;
+          totalRevenue += order.total;
+          totalOrders += 1;
+        });
+
+        formattedData = Quarterly.map((quarter) => ({
+          name: quarter,
+          sales: quarterlyData[quarter].sales,
+          orders: quarterlyData[quarter].count,
+        }));
+        break;
+
+      case "Yearly":
+        const yearlyData: { [key: string]: { sales: number; count: number } } =
+          {};
+        filteredOrders.forEach((order) => {
+          const year = order.createdAt.slice(0, 4);
+          if (!yearlyData[year]) yearlyData[year] = { sales: 0, count: 0 };
+          yearlyData[year].sales += order.total;
+          yearlyData[year].count += 1;
+          totalRevenue += order.total;
+          totalOrders += 1;
+        });
+
+        formattedData = Object.keys(yearlyData).map((year) => ({
+          name: year,
+          sales: yearlyData[year].sales,
+          orders: yearlyData[year].count,
+        }));
+        break;
+    }
+    setChartData(formattedData);
     setTotalRevenue(totalRevenue);
     setOrderCount(totalOrders);
   };
